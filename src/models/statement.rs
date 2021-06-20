@@ -1,14 +1,47 @@
 pub use crate::{Language, ToCode};
 
 #[derive(Debug)]
-pub struct VariableInit<T: ToCode> {
-	pub name: String,
+pub struct VariableInit {
+	pub name: Box<dyn ToCode>,
 	pub mutable: Option<bool>,
-	pub typ: Option<String>,
-	pub value: T,
+	pub typ: Option<Box<dyn ToCode>>,
+	pub value: Box<dyn ToCode>,
 }
 
-impl<T: ToCode> ToCode for VariableInit<T> {
+impl std::default::Default for VariableInit {
+	fn default() -> Self {
+		Self {
+			name: Box::new("foo"),
+			mutable: None,
+			typ: None,
+			value: Box::new("bar"),
+		}
+	}
+}
+
+impl VariableInit {
+	pub fn with_name(mut self, name: impl ToCode + 'static) -> Self {
+		self.name = Box::new(name);
+		self
+	}
+
+	pub fn with_mutable(mut self, is_mutable: bool) -> Self {
+		self.mutable = Some(is_mutable);
+		self
+	}
+
+	pub fn with_type(mut self, typ: impl ToCode + 'static) -> Self {
+		self.typ = Some(Box::new(typ));
+		self
+	}
+
+	pub fn with_value(mut self, value: impl ToCode + 'static) -> Self {
+		self.value = Box::new(value);
+		self
+	}
+}
+
+impl ToCode for VariableInit {
 	fn to_code(&self, language: Language) -> String {
 		let Self {
 			name,
@@ -26,9 +59,9 @@ impl<T: ToCode> ToCode for VariableInit<T> {
 					}
 					_ => String::new(),
 				},
-				name,
+				name.to_code(language),
 				match typ {
-					Some(typ) => format!(":{}", typ),
+					Some(typ) => format!(":{}", typ.to_code(language)),
 					None => String::new(),
 				},
 				value.to_code(language)
@@ -40,9 +73,9 @@ impl<T: ToCode> ToCode for VariableInit<T> {
 						Some(true) => String::from("let"),
 						Some(false) | None => String::from("const"),
 					},
-					name,
+					name.to_code(language),
 					match typ {
-						Some(typ) => format!(":{}", typ),
+						Some(typ) => format!(":{}", typ.to_code(language)),
 						None => String::new(),
 					},
 					value.to_code(language)
@@ -53,17 +86,14 @@ impl<T: ToCode> ToCode for VariableInit<T> {
 }
 
 #[derive(Debug)]
-pub struct AssignVariable<T: ToCode> {
-	pub name: String,
-	pub value: T,
-}
+pub struct AssignVariable<T: ToCode, F: ToCode>(T, F);
 
-impl<T: ToCode> ToCode for AssignVariable<T> {
+impl<T: ToCode, F: ToCode> ToCode for AssignVariable<T, F> {
 	fn to_code(&self, language: Language) -> String {
-		let Self { name, value } = self;
+		let Self(name, value) = self;
 		match language {
 			Language::Rust | Language::TypeScript => {
-				format!("{}={};", name, value.to_code(language))
+				format!("{}={};", name.to_code(language), value.to_code(language))
 			}
 		}
 	}

@@ -1,5 +1,7 @@
 pub mod expression;
+pub mod operation;
 pub mod statement;
+pub mod types;
 
 use std::fmt::Debug;
 
@@ -35,28 +37,94 @@ pub enum Visibility {
 
 #[derive(Debug)]
 pub struct Parameter {
-	pub name: String,
-	pub typ: Option<String>,
+	pub name: Box<dyn ToCode>,
+	pub typ: Option<Box<dyn ToCode>>,
+}
+
+impl std::default::Default for Parameter {
+	fn default() -> Self {
+		Self {
+			name: Box::new(String::from("foo")),
+			typ: None,
+		}
+	}
+}
+
+impl Parameter {
+	pub fn with_name(mut self, name: impl ToCode + 'static) -> Self {
+		self.name = Box::new(name);
+		self
+	}
+
+	pub fn with_type(mut self, typ: impl ToCode + 'static) -> Self {
+		self.typ = Some(Box::new(typ));
+		self
+	}
 }
 
 #[derive(Debug)]
 pub struct Function {
-	pub name: String,
-	pub return_type: Option<String>,
+	pub name: Box<dyn ToCode>,
+	pub return_type: Option<Box<dyn ToCode>>,
 	pub visibility: Visibility,
 	pub params: Vec<Parameter>,
 	pub content: Vec<Box<dyn ToCode>>,
+}
+
+impl Function {
+	pub fn with_name(mut self, name: impl ToCode + 'static) -> Self {
+		self.name = Box::new(name);
+		self
+	}
+
+	pub fn with_return_type(mut self, return_type: impl ToCode + 'static) -> Self {
+		self.return_type = Some(Box::new(return_type));
+		self
+	}
+
+	pub fn with_visibility(mut self, visibility: Visibility) -> Self {
+		self.visibility = visibility;
+		self
+	}
+
+	pub fn with_param(mut self, param: Parameter) -> Self {
+		self.params.push(param);
+		self
+	}
+
+	pub fn with_statement(mut self, statement: impl ToCode + 'static) -> Self {
+		self.content.push(Box::new(statement));
+		self
+	}
+}
+
+impl std::default::Default for Function {
+	fn default() -> Self {
+		Self {
+			name: Box::new(String::from("foo")),
+			return_type: None,
+			visibility: Visibility::Private,
+			params: vec![],
+			content: vec![],
+		}
+	}
 }
 
 impl ToCode for Parameter {
 	fn to_code(&self, language: Language) -> String {
 		match language {
 			Language::Rust => {
-				format!("{}:{}", self.name, self.typ.clone().unwrap())
+				format!(
+					"{}:{}",
+					self.name.to_code(language),
+					self.typ.as_ref().unwrap().to_code(language)
+				)
 			}
 			Language::TypeScript => match self.typ {
-				Some(ref typ) => format!("{}:{}", self.name, typ),
-				_ => format!("{}:any", self.name),
+				Some(ref typ) => {
+					format!("{}:{}", self.name.to_code(language), typ.to_code(language))
+				}
+				_ => format!("{}:any", self.name.to_code(language)),
 			},
 		}
 	}
@@ -73,13 +141,13 @@ impl ToCode for Function {
 						Visibility::Public => " ",
 						_ => "",
 					},
-					self.name,
+					self.name.to_code(language),
 					self.params
 						.iter()
 						.map(|param| param.to_code(language))
 						.join(","),
 					match self.return_type {
-						Some(ref r_type) => format!("->{}", r_type),
+						Some(ref r_type) => format!("->{}", r_type.to_code(language)),
 						None => String::new(),
 					},
 					self.content
@@ -96,13 +164,13 @@ impl ToCode for Function {
 						Visibility::Public => String::from(" "),
 						Visibility::Private => String::new(),
 					},
-					self.name,
+					self.name.to_code(language),
 					self.params
 						.iter()
 						.map(|param| param.to_code(language))
 						.join(","),
 					match self.return_type {
-						Some(ref typ) => format!(":{}", typ),
+						Some(ref typ) => format!(":{}", typ.to_code(language)),
 						None => String::from(":void"),
 					},
 					self.content
