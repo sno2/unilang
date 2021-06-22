@@ -66,6 +66,26 @@ impl ToCode for VariableInit {
 				},
 				value.to_code(language)
 			),
+			Language::CPP => {
+				format!(
+					"{} {}={};",
+					typ.as_ref().unwrap().to_code(language),
+					name.to_code(language),
+					value.to_code(language)
+				)
+			}
+			Language::Python { include_types, .. } => {
+				format!(
+					"{}{}={}",
+					name.to_code(language),
+					if include_types && typ.is_some() {
+						format!(":{}", typ.as_ref().unwrap().to_code(language))
+					} else {
+						String::new()
+					},
+					value.to_code(language)
+				)
+			}
 			Language::TypeScript => {
 				format!(
 					"{} {}{}={};",
@@ -92,8 +112,11 @@ impl<T: ToCode, F: ToCode> ToCode for AssignVariable<T, F> {
 	fn to_code(&self, language: Language) -> String {
 		let Self(name, value) = self;
 		match language {
-			Language::Rust | Language::TypeScript => {
+			Language::Rust | Language::TypeScript | Language::CPP => {
 				format!("{}={};", name.to_code(language), value.to_code(language))
+			}
+			Language::Python { .. } => {
+				format!("{}={}", name.to_code(language), value.to_code(language))
 			}
 		}
 	}
@@ -106,12 +129,45 @@ impl<T: ToCode> ToCode for Return<T> {
 	fn to_code(&self, language: Language) -> String {
 		let Self(expr) = self;
 		match language {
-			Language::Rust | Language::TypeScript => match expr {
+			Language::Rust | Language::TypeScript | Language::CPP => match expr {
 				Some(expr) => format!("return {};", expr.to_code(language)),
-				None => format!("return;"),
+				None => String::from("return;"),
+			},
+			Language::Python { .. } => match expr {
+				Some(expr) => format!("return {}", expr.to_code(language)),
+				None => String::from("return"),
 			},
 		}
 	}
 }
 
-pub use crate::expression::Raw;
+#[derive(Debug)]
+pub enum Comment {
+	/// ## Notes
+	/// * inserts newline after comment if the language's comment spans rest of
+	///   the line
+	Regular(String),
+	MultiLine(String),
+	Doc(String),
+}
+
+impl ToCode for Comment {
+	fn to_code(&self, language: Language) -> String {
+		match self {
+			Self::Regular(content) => match language {
+				Language::Rust | Language::TypeScript | Language::CPP => format!("//{}\n", content),
+				Language::Python { .. } => format!("#{}", content),
+			},
+			Self::MultiLine(content) => match language {
+				Language::Rust | Language::TypeScript | Language::CPP => format!("/*{}*/", content),
+				Language::Python { .. } => format!("\"\"\"{}\"\"\"", content),
+			},
+			Self::Doc(content) => match language {
+				Language::Rust => format!("///{}\n", content),
+				Language::TypeScript => format!("/**{}*/", content),
+				Language::CPP => Self::Regular(content.clone()).to_code(language),
+				Language::Python { .. } => Self::MultiLine(content.clone()).to_code(language),
+			},
+		}
+	}
+}

@@ -1,3 +1,5 @@
+#[macro_use]
+pub(crate) mod macros;
 mod models;
 
 pub use models::*;
@@ -8,27 +10,31 @@ mod tests {
 
 	#[test]
 	fn basic_function() {
-		let func = Function::default()
-			.with_visibility(Visibility::Public)
-			.with_name("add")
-			.with_return_type(types::Number)
-			.with_param(Parameter::default().with_name("a").with_type(types::Number))
-			.with_param(Parameter::default().with_name("b").with_type(types::Number))
-			.with_statement(
-				statement::VariableInit::default()
-					.with_name("sum")
-					.with_value(operation::Add("a", "b")),
-			)
-			.with_statement(statement::Return(Some("sum")));
+		let scope = Scope::default()
+			.with(Import::Members(
+				String::from("foo"),
+				vec![String::from("Hello")],
+			))
+			.with(
+				Function::default()
+					.with_visibility(Visibility::Public)
+					.with_name("add")
+					.with_return_type(types::Number)
+					.with_param(Parameter(Box::new("a"), Some(Box::new(types::Number))))
+					.with_param(Parameter(Box::new("b"), Some(Box::new(types::Number))))
+					.with_scope(
+						Scope::default().with(statement::Return(Some(operation::Add("a", "b")))),
+					),
+			);
 
 		assert_eq!(
-			func.to_code(Language::Rust),
-			"pub fn add(a:i32,b:i32)->i32{let sum=a+b;return sum;}"
+			scope.to_code(Language::Rust),
+			"pub fn add(a:i32,b:i32)->i32{return a+b;}"
 		);
 
 		assert_eq!(
-			func.to_code(Language::TypeScript),
-			"export function add(a:number,b:number):number{const sum=a+b;return sum;}"
+			scope.to_code(Language::TypeScript),
+			"export function add(a:number,b:number):number{return a+b;}"
 		);
 	}
 }
