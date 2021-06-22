@@ -4,7 +4,7 @@ A Rust crate for combining abstract programming concepts and generating working 
 
 ## Languages
 
-Unilang can output the following programming languages:
+Unilang can output the following programming languages with full support:
 
 - TypeScript
 - Rust
@@ -13,6 +13,29 @@ Unilang can output the following programming languages:
 
 - Python: Module system is not supported.
 - C++: Module system is not supported.
+
+## Concepts
+
+- Scopes
+- Functions
+  - Parameters (opt. types)
+  - Return Type (opt.)
+- Statements
+  - Variable Initialization
+  - Variable Assignment
+  - Return
+- Blocks
+  - If
+  - Else If
+  - Else
+- Expressions
+  - Ternary
+  - Function Call
+- Operations
+  - Add
+  - Subtract
+  - Multiply
+  - Divide
 
 ## Future
 
