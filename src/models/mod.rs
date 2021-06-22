@@ -31,10 +31,7 @@ impl ToCode for Value {
 	}
 }
 
-use std::{
-	any::{Any, TypeId},
-	fmt::Debug,
-};
+use std::fmt::Debug;
 
 use itertools::{free::join, Itertools};
 
