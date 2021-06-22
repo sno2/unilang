@@ -36,6 +36,11 @@ Unilang can output the following programming languages with full support:
   - Subtract
   - Multiply
   - Divide
+- Constants
+  - True/False
+- Types
+  - Number
+  - Integer
 
 ## Future
 
