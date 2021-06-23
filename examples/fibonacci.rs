@@ -1,4 +1,4 @@
-use unilang::*;
+use unilang::{expression::FunctionCall, RunScope, *};
 
 fn main() {
 	let program = Scope::default()
@@ -16,11 +16,10 @@ fn main() {
 						.with(
 							block::ConditionalBuilder::default().with_if(
 								block::If::default()
-									.with_condition(condition::Or(
-										condition::Equal("num", 0),
-										condition::Equal("num", 1),
-									))
-									.with_scope(Scope::default().with(statement::Return(Some(1)))),
+									.with_condition(condition::LessThan("num", 2))
+									.with_scope(
+										Scope::default().with(statement::Return(Some("num"))),
+									),
 							),
 						)
 						.with(statement::Return(Some(operation::Add(
@@ -34,14 +33,18 @@ fn main() {
 							),
 						)))),
 				),
-		);
+		)
+		.with(RunScope(Scope::default().with(print::Println(
+			FunctionCall("fibonacci", vec![Box::new(5)]),
+		))));
 	for language in vec![
 		Language::Rust,
 		Language::TypeScript,
 		Language::CPP,
 		Language::Python {
-			include_types: true,
+			include_types: false,
 			indent_level: None,
+			indent_type: IndentType::Tab,
 		},
 	]
 	.iter()

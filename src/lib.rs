@@ -2,6 +2,7 @@
 pub(crate) mod macros;
 mod models;
 
+pub(crate) use models::utils;
 pub use models::*;
 
 #[cfg(test)]

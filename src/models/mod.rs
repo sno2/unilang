@@ -3,12 +3,14 @@ pub mod condition;
 pub mod expression;
 mod import;
 pub mod operation;
+pub mod print;
 pub mod statement;
 pub mod types;
-
-pub use statement::Comment;
+pub(crate) mod utils;
 
 pub use import::Import;
+pub use statement::Comment;
+pub use utils::RunScope;
 
 #[derive(Debug)]
 pub enum Value {
@@ -35,6 +37,24 @@ use std::fmt::Debug;
 
 use itertools::{free::join, Itertools};
 
+use self::expression::FunctionCall;
+
+#[derive(Debug, Clone, Copy)]
+pub enum IndentType {
+	Tab,
+	/// Include the amount of spaces for each indentation here.
+	Space(u16),
+}
+
+impl Into<String> for IndentType {
+	fn into(self) -> String {
+		match self {
+			Self::Tab => String::from("\t"),
+			Self::Space(times) => " ".repeat(times as usize),
+		}
+	}
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Language {
 	Rust,
@@ -42,7 +62,9 @@ pub enum Language {
 	CPP,
 	Python {
 		include_types: bool,
+		/// **ALWAYS** set this to [`None`]
 		indent_level: Option<u32>,
+		indent_type: IndentType,
 	},
 }
 
@@ -125,10 +147,15 @@ impl ToCode for Scope {
 		self.children
 			.iter()
 			.map(|itm| match language {
-				Language::Python { indent_level, .. } => {
+				Language::Python {
+					indent_level,
+					indent_type,
+					..
+				} => {
+					let indent: String = indent_type.into();
 					format!(
 						"\n{}{}",
-						"\t".repeat(indent_level.unwrap_or(0) as usize),
+						indent.repeat(indent_level.unwrap_or(0) as usize),
 						itm.to_code(language)
 					)
 				}
@@ -140,7 +167,7 @@ impl ToCode for Scope {
 
 #[derive(Debug)]
 pub struct Function {
-	pub name: Box<dyn ToCode>,
+	pub name: String,
 	pub return_type: Option<Box<dyn ToCode>>,
 	pub visibility: Visibility,
 	pub params: Vec<Parameter>,
@@ -148,8 +175,8 @@ pub struct Function {
 }
 
 impl Function {
-	pub fn with_name(mut self, name: impl ToCode + 'static) -> Self {
-		self.name = Box::new(name);
+	pub fn with_name<T: AsRef<str>>(mut self, name: T) -> Self {
+		self.name = name.as_ref().to_owned();
 		self
 	}
 
@@ -172,12 +199,16 @@ impl Function {
 		self.scope = scope;
 		self
 	}
+
+	pub fn call(&self, args: Vec<Box<dyn ToCode>>) -> FunctionCall<String> {
+		FunctionCall(self.name.clone(), args)
+	}
 }
 
 impl std::default::Default for Function {
 	fn default() -> Self {
 		Self {
-			name: Box::new(String::from("foo")),
+			name: String::from("foo"),
 			return_type: None,
 			visibility: Visibility::Private,
 			params: Vec::new(),
@@ -287,6 +318,7 @@ impl ToCode for Function {
 			Language::Python {
 				include_types,
 				indent_level,
+				indent_type,
 			} => {
 				format!(
 					"def {}({}){}:{}",
@@ -302,7 +334,8 @@ impl ToCode for Function {
 					},
 					self.scope.to_code(Language::Python {
 						include_types,
-						indent_level: Some(indent_level.unwrap_or(0) + 1)
+						indent_level: Some(indent_level.unwrap_or(0) + 1),
+						indent_type
 					})
 				)
 			}

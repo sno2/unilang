@@ -102,6 +102,7 @@ impl ToCode for If {
 			Language::Python {
 				include_types,
 				indent_level,
+				indent_type,
 			} => format!(
 				"if {}:{}",
 				condition.to_code(language),
@@ -110,7 +111,8 @@ impl ToCode for If {
 					indent_level: Some(match indent_level {
 						Some(lvl) => lvl + 1,
 						None => 1,
-					})
+					}),
+					indent_type
 				})
 			),
 		}
@@ -152,6 +154,7 @@ impl ToCode for Else {
 			Language::Python {
 				include_types,
 				indent_level,
+				indent_type,
 			} => {
 				format!(
 					"else:{}",
@@ -160,7 +163,8 @@ impl ToCode for Else {
 						indent_level: Some(match indent_level {
 							Some(lvl) => lvl + 1,
 							None => 1,
-						})
+						}),
+						indent_type
 					})
 				)
 			}
