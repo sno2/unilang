@@ -30,6 +30,19 @@ impl ToCode for Integer {
 }
 
 #[derive(Debug)]
+pub struct Float;
+
+impl ToCode for Float {
+	fn to_code(&self, language: Language) -> String {
+		String::from(match language {
+			Language::CPP => "double",
+			Language::Rust => "f32",
+			Language::TypeScript => "number",
+			Language::Python { .. } => "float",
+		})
+	}
+}
+#[derive(Debug)]
 pub struct Boolean;
 
 impl ToCode for Boolean {

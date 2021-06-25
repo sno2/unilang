@@ -12,15 +12,17 @@ mod tests {
 	#[test]
 	fn basic_function() {
 		let scope = Scope::default().with(
-			Function::default()
+			FunctionBuilder::new()
+				.name("add")
 				.with_visibility(Visibility::Public)
-				.with_name("add")
 				.with_return_type(types::Integer)
 				.with_param(Parameter(Box::new("a"), Some(Box::new(types::Integer))))
 				.with_param(Parameter(Box::new("b"), Some(Box::new(types::Integer))))
 				.with_scope(
 					Scope::default().with(statement::Return(Some(operation::Add("a", "b")))),
-				),
+				)
+				.build()
+				.unwrap(),
 		);
 
 		assert_eq!(

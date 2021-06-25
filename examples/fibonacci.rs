@@ -6,9 +6,9 @@ fn main() {
 			"Generates the sum of the series of numbers in the fibonacci set.",
 		)))
 		.with(
-			Function::default()
+			FunctionBuilder::new()
+				.name("fibonacci")
 				.with_visibility(Visibility::Public)
-				.with_name("fibonacci")
 				.with_return_type(types::Integer)
 				.with_param(Parameter(Box::new("num"), Some(Box::new(types::Integer))))
 				.with_scope(
@@ -32,7 +32,9 @@ fn main() {
 								vec![Box::new(operation::Subtract("num", 2))],
 							),
 						)))),
-				),
+				)
+				.build()
+				.unwrap(),
 		)
 		.with(RunScope(Scope::default().with(print::Println(
 			FunctionCall("fibonacci", vec![Box::new(5)]),

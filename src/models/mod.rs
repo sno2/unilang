@@ -4,11 +4,13 @@ pub mod expression;
 mod import;
 pub mod operation;
 pub mod print;
+mod scope;
 pub mod statement;
 pub mod types;
 pub(crate) mod utils;
 
 pub use import::Import;
+pub use scope::Scope;
 pub use statement::Comment;
 pub use utils::RunScope;
 
@@ -36,8 +38,6 @@ impl ToCode for Value {
 use std::fmt::Debug;
 
 use itertools::{free::join, Itertools};
-
-use self::expression::FunctionCall;
 
 #[derive(Debug, Clone, Copy)]
 pub enum IndentType {
@@ -73,42 +73,48 @@ pub trait ToCode: std::fmt::Debug {
 }
 
 impl ToCode for isize {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.to_string()
 	}
 }
 
 impl ToCode for i32 {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.to_string()
 	}
 }
 
 impl ToCode for usize {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.to_string()
 	}
 }
 
 impl ToCode for u32 {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.to_string()
 	}
 }
 
 impl ToCode for String {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.clone()
 	}
 }
 
 impl ToCode for &str {
+	#[inline]
 	fn to_code(&self, _: Language) -> String {
 		self.to_string()
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Visibility {
 	Public,
 	Private,
@@ -116,54 +122,6 @@ pub enum Visibility {
 
 #[derive(Debug)]
 pub struct Parameter(pub Box<dyn ToCode>, pub Option<Box<dyn ToCode>>);
-
-#[derive(Debug)]
-pub struct Scope {
-	children: Vec<Box<dyn ToCode>>,
-	indent_level: Option<u32>,
-}
-
-impl std::default::Default for Scope {
-	fn default() -> Self {
-		Self {
-			children: Vec::new(),
-			indent_level: None,
-		}
-	}
-}
-
-impl Scope {
-	pub fn with<T>(mut self, child: T) -> Self
-	where
-		T: ToCode + 'static,
-	{
-		self.children.push(Box::new(child));
-		self
-	}
-}
-
-impl ToCode for Scope {
-	fn to_code(&self, language: Language) -> String {
-		self.children
-			.iter()
-			.map(|itm| match language {
-				Language::Python {
-					indent_level,
-					indent_type,
-					..
-				} => {
-					let indent: String = indent_type.into();
-					format!(
-						"\n{}{}",
-						indent.repeat(indent_level.unwrap_or(0) as usize),
-						itm.to_code(language)
-					)
-				}
-				_ => itm.to_code(language),
-			})
-			.join("")
-	}
-}
 
 #[derive(Debug)]
 pub struct Function {
@@ -174,46 +132,65 @@ pub struct Function {
 	pub scope: Scope,
 }
 
-impl Function {
-	pub fn with_name<T: AsRef<str>>(mut self, name: T) -> Self {
-		self.name = name.as_ref().to_owned();
+#[derive(Debug)]
+pub struct FunctionBuilder {
+	pub name: Option<String>,
+	pub return_type: Option<Box<dyn ToCode>>,
+	pub visibility: Option<Visibility>,
+	pub params: Vec<Parameter>,
+	pub scope: Option<Scope>,
+}
+
+impl FunctionBuilder {
+	#[inline]
+	pub fn new() -> Self {
+		FunctionBuilder {
+			name: None,
+			return_type: None,
+			visibility: None,
+			params: Vec::new(),
+			scope: None,
+		}
+	}
+
+	#[inline]
+	pub fn name<T: AsRef<str>>(mut self, name: T) -> Self {
+		self.name = Some(name.as_ref().to_owned());
 		self
 	}
 
+	#[inline]
 	pub fn with_return_type(mut self, return_type: impl ToCode + 'static) -> Self {
 		self.return_type = Some(Box::new(return_type));
 		self
 	}
 
+	#[inline]
 	pub fn with_visibility(mut self, visibility: Visibility) -> Self {
-		self.visibility = visibility;
+		self.visibility = Some(visibility);
 		self
 	}
 
+	#[inline]
 	pub fn with_param(mut self, param: Parameter) -> Self {
 		self.params.push(param);
 		self
 	}
 
+	#[inline]
 	pub fn with_scope(mut self, scope: Scope) -> Self {
-		self.scope = scope;
+		self.scope = Some(scope);
 		self
 	}
 
-	pub fn call(&self, args: Vec<Box<dyn ToCode>>) -> FunctionCall<String> {
-		FunctionCall(self.name.clone(), args)
-	}
-}
-
-impl std::default::Default for Function {
-	fn default() -> Self {
-		Self {
-			name: String::from("foo"),
-			return_type: None,
-			visibility: Visibility::Private,
-			params: Vec::new(),
-			scope: Scope::default(),
-		}
+	pub fn build(self) -> Option<Function> {
+		Some(Function {
+			name: self.name?,
+			visibility: self.visibility.unwrap_or(Visibility::Private),
+			return_type: self.return_type,
+			params: self.params,
+			scope: self.scope?,
+		})
 	}
 }
 
