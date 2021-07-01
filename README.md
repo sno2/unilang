@@ -11,8 +11,8 @@ Unilang can output the following programming languages with full support:
 
 ### Partially Supported
 
-- Python: Module system is not supported.
-- C++: Module system is not supported.
+- Python: Module system is partially supported.
+- C++: Module system is partially supported.
 
 ## Concepts
 

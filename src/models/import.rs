@@ -15,7 +15,8 @@ impl ToCode for Import {
 			Self::Module(location) => match language {
 				Language::TypeScript => format!("import \"{}\";", location),
 				Language::Rust => format!("mod {};", location),
-				Language::CPP | Language::Python { .. } => unimplemented!(),
+				Language::CPP => format!("#include \"{}\"\n", location),
+				Language::Python { .. } => format!("import {}\n", location),
 			},
 			Self::Members(location, members) => match language {
 				Language::TypeScript => {
