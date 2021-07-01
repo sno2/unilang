@@ -8,11 +8,11 @@ Unilang can output the following programming languages with full support:
 
 - TypeScript
 - Rust
+- Python
 
 ### Partially Supported
 
 - Python: Module system is partially supported.
-- C++: Module system is partially supported.
 
 ## Concepts
 

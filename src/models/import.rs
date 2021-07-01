@@ -29,7 +29,10 @@ impl ToCode for Import {
 				Language::Rust => {
 					format!("use {}::{{{}}};", location, members.iter().join(","))
 				}
-				Language::CPP | Language::Python { .. } => unimplemented!(),
+				Language::Python { .. } => {
+					format!("from {} import {}\n", location, members.iter().join(","))
+				}
+				Language::CPP => unimplemented!(),
 			},
 		}
 	}
